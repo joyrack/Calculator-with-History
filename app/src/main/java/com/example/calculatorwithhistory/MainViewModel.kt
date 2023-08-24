@@ -6,10 +6,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.calculatorwithhistory.data.CalculatorState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class MainViewModel : ViewModel() {
@@ -24,28 +26,25 @@ class MainViewModel : ViewModel() {
     var operator by mutableStateOf("+")
         private set
 
-    private val _calculationHistory = MutableStateFlow(listOf<String>())     // empty list
-    val calculationHistory = _calculationHistory.asStateFlow()
-
-
-    private val _result = MutableStateFlow<String>("")
-    val result = _result.asStateFlow()
+    private val _calculatorState = MutableStateFlow(CalculatorState())
+    val calculatorState = _calculatorState.asStateFlow()
 
     fun updateHistory(job : Job) = viewModelScope.launch {
         Log.d(TAG, "updateHistory called")
         // wait for the job to finish
         job.join()
         Log.d(TAG, "job finished")
+
+        val result = _calculatorState.value.result
         // now that the job has finished, we will add the new calculation to the history
-        if(_result.value != "") {   // we have a valid calculation
-            val newCalculation = "$inputNum1 $operator $inputNum2 = ${_result.value}"
+        if(result != "" && result != "Error") {   // we have a valid calculation
+            val newCalculation = "$inputNum1 $operator $inputNum2 = $result"
             Log.d(TAG, newCalculation)
-            val temp = mutableListOf<String>()
-            _calculationHistory.value.forEach {
-                temp.add(it)
+
+            _calculatorState.update { currentState ->
+                currentState.history.add(newCalculation)
+                currentState.copy()
             }
-            temp.add(newCalculation)
-            _calculationHistory.value = temp    // assigning a new list to my state
         }
     }
 
@@ -67,13 +66,22 @@ class MainViewModel : ViewModel() {
         val n1 = inputNum1.toDoubleOrNull()
         val n2 = inputNum2.toDoubleOrNull()
         if(n1 == null || n2 == null) {
-            _result.value = ""
+            _calculatorState.update { currentState ->       // updating the state
+                currentState.copy(
+                    result = ""
+                )
+            }
         } else {
-            _result.value = when(operator) {
-                "+" -> (n1+n2).toString()
-                "-" -> (n1-n2).toString()
-                "x" -> (n1*n2).toString()
-                else -> (n1/n2).toString()
+            _calculatorState.update { currentState ->
+                currentState.copy(
+                    result = when(operator) {
+                        "+" -> String.format("%.1f", n1+n2)
+                        "-" -> String.format("%.1f", n1-n2)
+                        "x" -> String.format("%.1f", n1*n2)
+                        else -> if(n2.toInt() == 0) "Error"
+                            else String.format("%.1f", n1/n2)
+                    }
+                )
             }
         }
         Log.d(TAG, "getResult completed")

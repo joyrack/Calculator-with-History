@@ -64,11 +64,10 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun CalculatorApp(
+    mainViewModel: MainViewModel = viewModel(),
     modifier: Modifier = Modifier
 ) {
-    val mainViewModel = viewModel<MainViewModel>()
-    val result = mainViewModel.result.collectAsState()
-    val calculationHistory = mainViewModel.calculationHistory.collectAsState()
+    val calculatorState = mainViewModel.calculatorState.collectAsState()
 
     Column(
         modifier = modifier
@@ -80,7 +79,7 @@ fun CalculatorApp(
             inputNum1 = mainViewModel.inputNum1,
             inputNum2 = mainViewModel.inputNum2,
             operator = mainViewModel.operator,
-            result = result,
+            result = calculatorState.value.result,
             updateNum1 = { mainViewModel.updateNum1(it) },
             updateNum2 = { mainViewModel.updateNum2(it) },
             updateOperator = { mainViewModel.updateOperator(it) },
@@ -94,7 +93,7 @@ fun CalculatorApp(
             Text("Calculate")
         }
         CalculatorHistory(
-            calculationHistory = calculationHistory,
+            history = calculatorState.value.history,
             modifier = modifier
         )
     }
@@ -102,7 +101,7 @@ fun CalculatorApp(
 
 @Composable
 fun CalculatorHistory(
-    calculationHistory: State<List<String>>,
+    history: List<String>,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -111,7 +110,7 @@ fun CalculatorHistory(
         Text("History", fontSize = 24.sp)
         Spacer(modifier = Modifier.height(16.dp))
         LazyColumn {
-            items(calculationHistory.value) { calculation ->
+            items(history) { calculation ->
                 Text(calculation, modifier = Modifier.padding(vertical = 4.dp))
             }
         }
@@ -124,7 +123,7 @@ fun InputRow(
     inputNum1: String,
     inputNum2: String,
     operator: String,
-    result: State<String>,
+    result: String,
     updateNum1: (String) -> Unit,
     updateNum2: (String) -> Unit,
     updateOperator: (String) -> Unit,
@@ -143,7 +142,7 @@ fun InputRow(
         InputNumberField(initialVal = inputNum2, onTextChange = updateNum2)
         Text(" = ", fontSize = 28.sp)
         OutlinedTextField(
-            value = result.value,
+            value = result,
             onValueChange = {},
             modifier = Modifier.width(70.dp),
             readOnly = true
